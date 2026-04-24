@@ -3,6 +3,7 @@ import { authOptions } from "../auth/[...nextauth]";
 import stripe from "../../../lib/stripe";
 import connectDB from "../../../lib/mongodb";
 import Order from "../../../models/Order";
+import User from "../../../models/User";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -24,6 +25,22 @@ export default async function handler(req, res) {
 
     // Calculamos el total del pedido
     const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+    await connectDB();
+
+    // En producción puede pasar que la sesión no incluya user.id (token viejo o cookie desactualizada).
+    // En ese caso recuperamos el usuario por email para poder crear la orden.
+    let userId = session?.user?.id;
+    if (!userId && session?.user?.email) {
+      const userDoc = await User.findOne({ email: session.user.email }).select("_id").lean();
+      userId = userDoc?._id?.toString();
+    }
+
+    if (!userId) {
+      return res.status(401).json({
+        message: "Sesión inválida. Cierra sesión y vuelve a iniciar para pagar.",
+      });
+    }
 
     const appUrl = (process.env.NEXTAUTH_URL || req.headers.origin || "").replace(/\/$/, "");
     if (!appUrl) {
@@ -66,9 +83,8 @@ export default async function handler(req, res) {
     });
 
     // Luego guardamos el pedido en MongoDB con el ID de Stripe
-    await connectDB();
     await Order.create({
-      userId: session.user.id,
+      userId,
       userEmail: session.user.email,
       items: items.map((item) => ({
         productId: item._id,
