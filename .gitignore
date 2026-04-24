@@ -1,3 +1,6 @@
+# Carpeta con código explicado para el examen (solo local, no sube a GitHub)
+_explicado/
+
 # Variables de entorno (nunca subir al repositorio)
 .env
 .env.*
