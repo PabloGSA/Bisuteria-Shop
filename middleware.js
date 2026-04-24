@@ -25,5 +25,5 @@ export async function middleware(req) {
 
 // Le decimos a Next.js en qué rutas debe ejecutar este middleware
 export const config = {
-  matcher: ["/cart", "/mis-pedidos", "/admin/:path*"],
+  matcher: ["/mis-pedidos", "/admin/:path*"],
 };

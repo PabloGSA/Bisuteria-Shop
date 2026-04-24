@@ -16,7 +16,7 @@ export default function CartPage() {
   const handleCheckout = async () => {
     if (!session) {
       toast.error("Debes iniciar sesión para pagar");
-      router.push("/login");
+      router.push("/login?callbackUrl=/cart");
       return;
     }
 
@@ -116,6 +116,11 @@ export default function CartPage() {
         {/* Resumen del pedido */}
         <div className="lg:col-span-1">
           <div className="bg-gray-50 p-8 sticky top-6">
+            {!session && (
+              <div className="mb-6 border border-amber-300 bg-amber-50 px-4 py-3 text-xs tracking-wide text-amber-800">
+                Para concretar el pago debes iniciar sesion.
+              </div>
+            )}
             <h2 className="text-sm uppercase tracking-widest text-gray-900 font-semibold mb-6">
               Resumen del pedido
             </h2>
@@ -143,7 +148,7 @@ export default function CartPage() {
               disabled={loading}
               className="w-full bg-black text-white py-4 text-sm uppercase tracking-widest hover:bg-gray-800 transition disabled:opacity-50"
             >
-              {loading ? "Redirigiendo..." : "Proceder al pago"}
+              {loading ? "Redirigiendo..." : session ? "Proceder al pago" : "Iniciar sesion para pagar"}
             </button>
 
             <p className="text-xs text-center text-gray-400 mt-4 tracking-wide">
