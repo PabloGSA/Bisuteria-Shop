@@ -25,26 +25,43 @@ export default async function handler(req, res) {
     // Calculamos el total del pedido
     const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
+    const appUrl = (process.env.NEXTAUTH_URL || req.headers.origin || "").replace(/\/$/, "");
+    if (!appUrl) {
+      return res.status(500).json({ message: "Falta configurar NEXTAUTH_URL en el servidor" });
+    }
+
     // Stripe trabaja en centavos, multiplicamos el precio por 100
-    const lineItems = items.map((item) => ({
-      price_data: {
-        currency: "usd",
-        product_data: {
-          name: item.name,
-          images: [item.image],
+    const lineItems = items.map((item) => {
+      // Stripe exige URLs absolutas para imágenes.
+      // Si la imagen viene como ruta relativa ("/images/..."), la convertimos a absoluta.
+      // Si no se puede convertir, enviamos el producto sin imagen para no bloquear el checkout.
+      const imageUrl = typeof item.image === "string" ? item.image : "";
+      const resolvedImage = imageUrl.startsWith("http")
+        ? imageUrl
+        : imageUrl.startsWith("/")
+          ? `${appUrl}${imageUrl}`
+          : "";
+
+      return {
+        price_data: {
+          currency: "usd",
+          product_data: {
+            name: item.name,
+            ...(resolvedImage ? { images: [resolvedImage] } : {}),
+          },
+          unit_amount: Math.round(item.price * 100),
         },
-        unit_amount: Math.round(item.price * 100),
-      },
-      quantity: item.quantity,
-    }));
+        quantity: item.quantity,
+      };
+    });
 
     // Primero creamos la sesión en Stripe para obtener su ID
     const checkoutSession = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       line_items: lineItems,
       mode: "payment",
-      success_url: `${process.env.NEXTAUTH_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXTAUTH_URL}/cart`,
+      success_url: `${appUrl}/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${appUrl}/cart`,
       customer_email: session.user.email,
     });
 
@@ -68,7 +85,9 @@ export default async function handler(req, res) {
     // Devolvemos la URL de Stripe para redirigir al usuario
     return res.status(200).json({ url: checkoutSession.url });
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: "Error al procesar el pago" });
+    console.error("Error creando checkout de Stripe:", error);
+    return res.status(500).json({
+      message: error?.message || "Error al procesar el pago",
+    });
   }
 }
