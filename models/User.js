@@ -1,5 +1,5 @@
-import mongoose from "mongoose";
-import bcrypt from "bcryptjs";
+const mongoose = require("mongoose");
+const bcrypt = require("bcryptjs");
 
 const UserSchema = new mongoose.Schema(
   {
@@ -20,7 +20,6 @@ const UserSchema = new mongoose.Schema(
       required: [true, "La contraseña es obligatoria"],
       minlength: [6, "La contraseña debe tener al menos 6 caracteres"],
     },
-    // Rol del usuario: "user" es el valor por defecto, "admin" da acceso al panel
     role: {
       type: String,
       enum: ["user", "admin"],
@@ -30,7 +29,6 @@ const UserSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Encriptamos la contraseña antes de guardar
 UserSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
   this.password = await bcrypt.hash(this.password, 12);
@@ -41,9 +39,8 @@ UserSchema.methods.comparePassword = async function (candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
 };
 
-// Forzamos que Mongoose use siempre el esquema actualizado
 if (mongoose.models.User) {
   delete mongoose.models.User;
 }
 
-export default mongoose.model("User", UserSchema);
+module.exports = mongoose.model("User", UserSchema);

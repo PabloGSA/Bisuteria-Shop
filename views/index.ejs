@@ -1,0 +1,101 @@
+<%- include('partials/head') %>
+<%- include('partials/navbar') %>
+
+<main class="max-w-7xl mx-auto px-4 py-10">
+
+  <!-- Hero banner -->
+  <div class="relative bg-gray-100 mb-14 flex flex-col items-center justify-center py-24 text-center">
+    <p class="text-xs uppercase tracking-widest text-gray-500 mb-3">Nueva colección</p>
+    <h1 class="text-5xl font-light text-gray-900 mb-4 tracking-wide">Romi Antonucci</h1>
+    <p class="text-gray-500 text-base mb-8 max-w-md">Piezas únicas hechas a mano para cada ocasión especial</p>
+    <a href="#productos" class="border border-black text-black px-8 py-3 uppercase tracking-widest text-sm hover:bg-black hover:text-white transition">
+      Ver colección
+    </a>
+  </div>
+
+  <!-- Filtros por categoría -->
+  <div id="productos" class="flex flex-wrap gap-0 mb-10 justify-center border-b border-gray-200">
+    <% const categorias = ['todos', 'collares', 'pulseras', 'aretes', 'anillos']; %>
+    <% categorias.forEach(cat => { %>
+      <button
+        onclick="filtrarCategoria('<%= cat %>')"
+        data-cat="<%= cat %>"
+        class="cat-btn px-6 py-3 text-sm uppercase tracking-widest transition border-b-2 -mb-px <%= selectedCategory === cat ? 'border-black text-black font-semibold' : 'border-transparent text-gray-400 hover:text-black' %>"
+      >
+        <%= cat %>
+      </button>
+    <% }) %>
+  </div>
+
+  <!-- Grid de productos -->
+  <div id="product-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+    <% products.forEach(product => { %>
+      <div class="product-card group bg-white" data-category="<%= product.category %>">
+
+        <!-- Imagen -->
+        <div class="relative h-72 w-full overflow-hidden bg-gray-100">
+          <img
+            src="<%= product.image %>"
+            alt="<%= product.name %>"
+            class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          />
+        </div>
+
+        <!-- Info -->
+        <div class="pt-4 pb-2">
+          <p class="text-xs text-gray-400 uppercase tracking-widest mb-1"><%= product.category %></p>
+          <h3 class="text-gray-900 font-medium text-base"><%= product.name %></h3>
+          <p class="text-gray-500 text-sm mt-1 line-clamp-1"><%= product.description %></p>
+
+          <div class="flex items-center justify-between mt-3">
+            <span class="text-gray-900 font-semibold text-lg">$<%= product.price.toFixed(2) %></span>
+            <button
+              onclick='addToCart(<%- JSON.stringify({_id: product._id, name: product.name, price: product.price, image: product.image, category: product.category}) %>)'
+              class="bg-black text-white px-5 py-2 text-sm uppercase tracking-wide hover:bg-gray-800 transition"
+            >
+              Agregar
+            </button>
+          </div>
+        </div>
+      </div>
+    <% }) %>
+  </div>
+
+  <p id="no-products" class="hidden text-center text-gray-400 py-20 uppercase tracking-widest text-sm">
+    No hay productos en esta categoría
+  </p>
+</main>
+
+<%- include('partials/footer') %>
+
+<script>
+  // Aplicar filtro inicial
+  filtrarCategoria('<%= selectedCategory %>');
+
+  function filtrarCategoria(cat) {
+    const cards = document.querySelectorAll('.product-card');
+    const buttons = document.querySelectorAll('.cat-btn');
+    let visible = 0;
+
+    cards.forEach(card => {
+      const show = cat === 'todos' || card.dataset.category === cat;
+      card.style.display = show ? '' : 'none';
+      if (show) visible++;
+    });
+
+    buttons.forEach(btn => {
+      const active = btn.dataset.cat === cat;
+      btn.classList.toggle('border-black', active);
+      btn.classList.toggle('text-black', active);
+      btn.classList.toggle('font-semibold', active);
+      btn.classList.toggle('border-transparent', !active);
+      btn.classList.toggle('text-gray-400', !active);
+    });
+
+    document.getElementById('no-products').classList.toggle('hidden', visible > 0);
+
+    // Actualizar URL sin recargar
+    const url = cat === 'todos' ? '/' : '/?cat=' + cat;
+    history.replaceState(null, '', url);
+  }
+</script>

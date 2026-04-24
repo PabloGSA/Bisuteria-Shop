@@ -1,0 +1,71 @@
+<%- include('partials/head') %>
+<%- include('partials/navbar') %>
+
+<main class="max-w-7xl mx-auto px-4 py-10">
+
+  <!-- Encabezado -->
+  <div class="border-b border-gray-200 pb-6 mb-10">
+    <p class="text-xs uppercase tracking-widest text-gray-400 mb-1">Romi Antonucci</p>
+    <h1 class="text-3xl font-light text-gray-900 tracking-wide">Mis pedidos</h1>
+  </div>
+
+  <% if (pedidos.length === 0) { %>
+    <div class="text-center py-24">
+      <p class="text-xs uppercase tracking-widest text-gray-400 mb-6">Sin pedidos</p>
+      <h2 class="text-2xl font-light text-gray-900 mb-3">Todavía no tienes pedidos</h2>
+      <p class="text-gray-400 text-sm mb-10">Cuando realices una compra aparecerá aquí</p>
+      <a href="/" class="border border-black text-black px-10 py-3 text-sm uppercase tracking-widest hover:bg-black hover:text-white transition">
+        Ver colección
+      </a>
+    </div>
+  <% } else { %>
+    <div class="space-y-0 divide-y divide-gray-100">
+      <% pedidos.forEach(pedido => { %>
+        <div class="py-8">
+
+          <!-- Cabecera del pedido -->
+          <div class="flex items-center justify-between mb-5">
+            <div>
+              <p class="text-xs uppercase tracking-widest text-gray-400 mb-1">
+                <%= new Date(pedido.createdAt).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' }) %>
+              </p>
+              <p class="text-xs text-gray-300">ID: <%= pedido.id %></p>
+            </div>
+            <%
+              const estilos = {
+                pendiente: 'border-yellow-400 text-yellow-600',
+                pagado: 'border-green-500 text-green-600',
+                cancelado: 'border-red-400 text-red-500',
+              };
+              const estilo = estilos[pedido.status] || 'border-gray-300 text-gray-500';
+            %>
+            <span class="text-xs uppercase tracking-widest px-3 py-1 border <%= estilo %>">
+              <%= pedido.status %>
+            </span>
+          </div>
+
+          <!-- Productos del pedido -->
+          <ul class="divide-y divide-gray-100 mb-5">
+            <% pedido.items.forEach(item => { %>
+              <li class="py-3 flex justify-between text-sm text-gray-600">
+                <span>
+                  <%= item.name %>
+                  <span class="text-gray-400 ml-2">x<%= item.quantity %></span>
+                </span>
+                <span class="font-medium text-gray-900">$<%= (item.price * item.quantity).toFixed(2) %></span>
+              </li>
+            <% }) %>
+          </ul>
+
+          <!-- Total -->
+          <div class="flex justify-between text-sm font-medium text-gray-900 border-t border-gray-100 pt-4">
+            <span class="uppercase tracking-widest text-xs">Total</span>
+            <span>$<%= pedido.total.toFixed(2) %></span>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+  <% } %>
+</main>
+
+<%- include('partials/footer') %>

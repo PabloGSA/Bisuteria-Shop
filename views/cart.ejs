@@ -1,0 +1,165 @@
+<%- include('partials/head') %>
+<%- include('partials/navbar') %>
+
+<main class="max-w-7xl mx-auto px-4 py-10">
+
+  <!-- Carrito vacío -->
+  <div id="cart-empty" class="hidden text-center py-32">
+    <p class="text-xs uppercase tracking-widest text-gray-400 mb-6">Tu carrito</p>
+    <h2 class="text-2xl font-light text-gray-900 mb-4">Tu carrito está vacío</h2>
+    <p class="text-gray-400 text-sm mb-10">Explora nuestra colección y agrega algo especial</p>
+    <a href="/" class="border border-black text-black px-10 py-3 text-sm uppercase tracking-widest hover:bg-black hover:text-white transition">
+      Ver colección
+    </a>
+  </div>
+
+  <!-- Carrito con productos -->
+  <div id="cart-filled" class="hidden">
+
+    <!-- Encabezado -->
+    <div class="border-b border-gray-200 pb-6 mb-10">
+      <p class="text-xs uppercase tracking-widest text-gray-400 mb-1">Romi Antonucci</p>
+      <h1 class="text-3xl font-light text-gray-900 tracking-wide">
+        Tu carrito <span id="cart-count-label" class="text-gray-400 text-xl"></span>
+      </h1>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-16">
+
+      <!-- Lista de productos -->
+      <div class="lg:col-span-2 divide-y divide-gray-100" id="cart-items-list"></div>
+
+      <!-- Resumen del pedido -->
+      <div class="lg:col-span-1">
+        <div class="bg-gray-50 p-8 sticky top-6">
+          <h2 class="text-sm uppercase tracking-widest text-gray-900 font-semibold mb-6">Resumen del pedido</h2>
+
+          <div class="space-y-3 text-sm text-gray-600 mb-6">
+            <div class="flex justify-between">
+              <span>Subtotal</span>
+              <span id="cart-subtotal">$0.00</span>
+            </div>
+            <div class="flex justify-between">
+              <span>Envío</span>
+              <span class="text-gray-900">Gratis</span>
+            </div>
+          </div>
+
+          <div class="border-t border-gray-200 pt-4 mb-8">
+            <div class="flex justify-between text-gray-900 font-medium text-base">
+              <span>Total</span>
+              <span id="cart-total">$0.00</span>
+            </div>
+          </div>
+
+          <button
+            id="checkout-btn"
+            onclick="handleCheckout()"
+            class="w-full bg-black text-white py-4 text-sm uppercase tracking-widest hover:bg-gray-800 transition disabled:opacity-50"
+          >
+            Proceder al pago
+          </button>
+
+          <p class="text-xs text-center text-gray-400 mt-4 tracking-wide">Pago seguro procesado por Stripe</p>
+
+          <div class="mt-6 text-center">
+            <a href="/" class="text-xs uppercase tracking-widest text-gray-400 hover:text-black transition border-b border-gray-300 hover:border-black pb-0.5">
+              Seguir comprando
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<%- include('partials/footer') %>
+
+<script>
+  // ¿El usuario está logueado? Lo necesitamos para el checkout
+  const currentUser = <%- JSON.stringify(user) %>;
+
+  function renderCart() {
+    const items = getCart();
+    const empty = document.getElementById('cart-empty');
+    const filled = document.getElementById('cart-filled');
+
+    if (items.length === 0) {
+      empty.classList.remove('hidden');
+      filled.classList.add('hidden');
+      return;
+    }
+
+    empty.classList.add('hidden');
+    filled.classList.remove('hidden');
+
+    const totalItems = items.reduce((s, i) => s + i.quantity, 0);
+    const totalPrice = items.reduce((s, i) => s + i.price * i.quantity, 0);
+
+    document.getElementById('cart-count-label').textContent =
+      `(${totalItems} ${totalItems === 1 ? 'artículo' : 'artículos'})`;
+    document.getElementById('cart-subtotal').textContent = '$' + totalPrice.toFixed(2);
+    document.getElementById('cart-total').textContent = '$' + totalPrice.toFixed(2);
+
+    const list = document.getElementById('cart-items-list');
+    list.innerHTML = items.map(item => `
+      <div class="flex gap-6 py-8">
+        <div class="w-28 h-28 flex-shrink-0 bg-gray-100 overflow-hidden">
+          <img src="${item.image}" alt="${item.name}" class="w-full h-full object-cover" />
+        </div>
+        <div class="flex-1 flex flex-col justify-between">
+          <div>
+            <p class="text-xs uppercase tracking-widest text-gray-400 mb-1">${item.category}</p>
+            <h3 class="text-base font-medium text-gray-900">${item.name}</h3>
+            <p class="text-sm text-gray-500 mt-1">Cantidad: ${item.quantity}</p>
+          </div>
+          <button
+            onclick="removeFromCart('${item._id}')"
+            class="text-xs uppercase tracking-widest text-gray-400 hover:text-black transition text-left w-fit border-b border-gray-300 hover:border-black pb-0.5"
+          >
+            Eliminar
+          </button>
+        </div>
+        <div class="text-right flex-shrink-0">
+          <p class="text-base font-medium text-gray-900">$${(item.price * item.quantity).toFixed(2)}</p>
+          <p class="text-xs text-gray-400 mt-1">$${item.price.toFixed(2)} c/u</p>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  async function handleCheckout() {
+    if (!currentUser) {
+      window.location.href = '/login?callbackUrl=/cart';
+      return;
+    }
+
+    const btn = document.getElementById('checkout-btn');
+    btn.disabled = true;
+    btn.textContent = 'Redirigiendo...';
+
+    const items = getCart();
+
+    try {
+      const res = await fetch('/api/checkout/create-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+
+      clearCart();
+      window.location.href = data.url;
+    } catch (error) {
+      showToast(error.message || 'Error al procesar el pago', 'error');
+      btn.disabled = false;
+      btn.textContent = 'Proceder al pago';
+    }
+  }
+
+  // Escuchamos cambios en el carrito (cuando se agrega desde otro tab o desde index)
+  window.addEventListener('storage', renderCart);
+  renderCart();
+</script>
